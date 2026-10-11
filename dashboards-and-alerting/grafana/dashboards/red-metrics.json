@@ -1,0 +1,160 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=~\"$service\"}[$__rate_interval])) by (job)",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "drawStyle": "line", "fillOpacity": 10 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Error Rate (%)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=~\"$service\",code=~\"5..\"}[$__rate_interval])) by (job) / sum(rate(http_requests_total{job=~\"$service\"}[$__rate_interval])) by (job) * 100",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0, "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "custom": { "drawStyle": "line", "fillOpacity": 10 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Latency (p50 / p95 / p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])) by (le,job))",
+          "legendFormat": "{{job}} p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])) by (le,job))",
+          "legendFormat": "{{job}} p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])) by (le,job))",
+          "legendFormat": "{{job}} p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "custom": { "drawStyle": "line", "fillOpacity": 0 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Top Services by Error Count",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "expr": "topk(5, sum(increase(http_requests_total{job=~\"$service\",code=~\"5..\"}[$__range])) by (job))",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Request Volume by Status Code",
+      "type": "stackedtimeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=~\"$service\",code=~\"2..\"}[$__rate_interval])) by (job)",
+          "legendFormat": "{{job}} 2xx",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=~\"$service\",code=~\"4..\"}[$__rate_interval])) by (job)",
+          "legendFormat": "{{job}} 4xx",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=~\"$service\",code=~\"5..\"}[$__rate_interval])) by (job)",
+          "legendFormat": "{{job}} 5xx",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "fillOpacity": 50 } }, "overrides": [] }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "DS_PROMETHEUS",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": { "selected": true, "text": "Prometheus", "value": "Prometheus" }
+      },
+      {
+        "name": "service",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "query": "label_values(http_requests_total, job)",
+        "includeAll": true,
+        "multi": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "title": "RED Metrics - Microservices",
+  "uid": "red-metrics-microservices",
+  "tags": ["red", "microservices", "baseline"]
+}
